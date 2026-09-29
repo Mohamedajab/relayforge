@@ -1,0 +1,25 @@
+services:
+  api:
+    environment:
+      RELAYFORGE_ALLOW_PRIVATE_TARGETS: "true"
+      RELAYFORGE_ALLOW_INSECURE_HTTP: "true"
+
+  worker:
+    environment:
+      RELAYFORGE_ALLOW_PRIVATE_TARGETS: "true"
+      RELAYFORGE_ALLOW_INSECURE_HTTP: "true"
+      RELAYFORGE_BASE_RETRY_SECONDS: "1"
+      RELAYFORGE_MAX_RETRY_SECONDS: "5"
+
+  receiver:
+    build: .
+    command: ["relayforge-receiver"]
+    environment:
+      RELAYFORGE_RECEIVER_HOST: 0.0.0.0
+      RELAYFORGE_RECEIVER_SECRET: local-receiver-secret
+      RELAYFORGE_DEMO_FAIL_FIRST: "2"
+    ports:
+      - "9000:9000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully

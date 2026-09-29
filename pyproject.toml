@@ -40,6 +40,7 @@ dev = [
 
 [project.scripts]
 relayforge = "relayforge.cli:app"
+relayforge-receiver = "relayforge.example_receiver:run"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/relayforge"]
@@ -48,6 +49,9 @@ packages = ["src/relayforge"]
 addopts = "-q --strict-markers --disable-warnings --cov=relayforge --cov-report=term-missing --cov-fail-under=85"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+  "integration: requires an external PostgreSQL test database",
+]
 
 [tool.ruff]
 line-length = 100
@@ -60,4 +64,3 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 python_version = "3.11"
 strict = true
 plugins = ["pydantic.mypy"]
-

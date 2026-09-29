@@ -3,13 +3,25 @@
 [![CI](https://github.com/Mohamedajab/relayforge/actions/workflows/ci.yml/badge.svg)](https://github.com/Mohamedajab/relayforge/actions/workflows/ci.yml)
 
 RelayForge is a durable webhook delivery service built to make failure visible and recoverable.
-Producers publish an event once; RelayForge fans it out to subscribed endpoints, signs each
-request, retries transient failures with jittered exponential backoff, and moves exhausted or
-permanent failures to a replayable dead-letter state.
+SaaS teams use it when a customer system must receive an event even if that system is temporarily
+slow or unavailable. Producers publish once; RelayForge stores the work, signs each request,
+retries transient failures and keeps exhausted deliveries available for inspection and replay.
 
-This is a portfolio project, but it is designed around production concerns rather than demo-only
-CRUD: competing workers, process crashes, duplicate requests, unsafe callback URLs, auditability,
-operator recovery and deterministic tests.
+The API acknowledges an event without waiting for subscriber network calls. Database leases let
+multiple workers share the queue and recover abandoned work after a process crash.
+
+## Evidence
+
+| Engineering question | Repository evidence |
+| --- | --- |
+| Can two workers send the same due job concurrently? | PostgreSQL CI test starts competing workers and asserts that only one claim succeeds |
+| What happens when a receiver returns 503? | Full-jitter retry policy honours Retry-After; the demo receiver fails twice before succeeding |
+| How are forged or replayed requests handled? | HMAC-SHA256 covers timestamp and exact body; the example receiver rejects bad signatures and stale timestamps |
+| What happens after a worker crashes? | Expiring leases make abandoned in-flight work eligible for another worker |
+| Can an operator recover permanent failures? | Attempt history is persisted and dead-lettered deliveries have an explicit replay operation |
+| Is the PostgreSQL path exercised? | GitHub Actions applies Alembic migrations and runs the concurrency test against PostgreSQL 17 on Python 3.11 and 3.12 |
+
+For a focused review, follow the [five-minute evaluation guide](docs/evaluation-guide.md).
 
 ## What it demonstrates
 
@@ -22,7 +34,8 @@ operator recovery and deterministic tests.
 - SSRF-oriented target validation and redirect blocking
 - Structured logs, request IDs, readiness checks and Prometheus-format metrics
 - Unit, API and worker integration tests with mocked transports
-- Docker Compose, non-root containers and GitHub Actions quality gates
+- A runnable signed receiver that demonstrates transient failure and idempotent consumption
+- Docker Compose, PostgreSQL-backed CI, non-root containers and GitHub Actions quality gates
 
 ## Architecture
 
@@ -73,6 +86,17 @@ PowerShell users can set the key with:
     $env:RELAYFORGE_API_KEY = "local-development-key"
 
 Interactive OpenAPI documentation is available at http://127.0.0.1:8000/docs.
+
+### Run the failure-recovery demo
+
+The demo overlay starts the platform plus a receiver that verifies signatures, rejects stale
+requests, deduplicates delivery IDs and deliberately returns 503 for the first two attempts.
+
+    docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+
+Use the requests in docs/evaluation-guide.md to register the receiver and publish an event. The
+delivery moves from pending to retrying and then succeeded, while the receiver records the event
+once.
 
 ### Register a subscriber
 
@@ -151,7 +175,7 @@ one migration job plus separate API and worker containers.
 
 The test suite covers signing and tamper detection, SSRF rules, retry timing, subscription fan-out,
 idempotency conflicts, lease expiry, stale-worker protection, API error contracts, signed delivery,
-retry-to-success and dead-letter behaviour.
+retry-to-success, dead-letter behaviour, receiver deduplication and competing PostgreSQL claims.
 
 ## Engineering decisions and limits
 
