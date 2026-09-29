@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: relayforge
+      POSTGRES_USER: relayforge
+      POSTGRES_PASSWORD: relayforge-local
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relayforge"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - relayforge-data:/var/lib/postgresql/data
+
+  migrate:
+    build: .
+    environment: &relayforge-environment
+      RELAYFORGE_DATABASE_URL: postgresql+psycopg://relayforge:relayforge-local@postgres/relayforge
+      RELAYFORGE_API_KEY: local-development-key
+    command: ["relayforge", "migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: .
+    environment: *relayforge-environment
+    command: ["relayforge", "api", "--host", "0.0.0.0"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build: .
+    environment: *relayforge-environment
+    command: ["relayforge", "worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  relayforge-data:
