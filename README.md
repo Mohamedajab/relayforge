@@ -1,5 +1,7 @@
 # RelayForge
 
+[![CI](https://github.com/Mohamedajab/relayforge/actions/workflows/ci.yml/badge.svg)](https://github.com/Mohamedajab/relayforge/actions/workflows/ci.yml)
+
 RelayForge is a durable webhook delivery service built to make failure visible and recoverable.
 Producers publish an event once; RelayForge fans it out to subscribed endpoints, signs each
 request, retries transient failures with jittered exponential backoff, and moves exhausted or
