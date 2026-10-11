@@ -22,6 +22,7 @@ multiple workers share the queue and recover abandoned work after a process cras
 | Is the PostgreSQL path exercised? | GitHub Actions applies Alembic migrations and runs the concurrency test against PostgreSQL 17 on Python 3.11 and 3.12 |
 
 For a focused review, follow the [five-minute evaluation guide](docs/evaluation-guide.md).
+For diagnosing failed deliveries and worker recovery, use the [local incident runbook](docs/INCIDENT_RUNBOOK.md).
 
 ## What it demonstrates
 
