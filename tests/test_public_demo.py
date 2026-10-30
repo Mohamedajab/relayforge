@@ -1,10 +1,22 @@
 import json
+import runpy
 import time
+from pathlib import Path
 
 import httpx
 import pytest
 
 from relayforge import public_demo
+
+
+async def test_entrypoint_without_bundled_static_directory_returns_404(monkeypatch):
+    entrypoint = Path(__file__).resolve().parents[1] / "app.py"
+    monkeypatch.setattr(Path, "is_dir", lambda _path: False)
+    runpy.run_path(str(entrypoint))
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=public_demo.app), base_url="https://demo.test"
+    ) as client:
+        assert (await client.get("/favicon.ico")).status_code == 404
 
 
 @pytest.fixture(autouse=True)

@@ -6,6 +6,8 @@ from fastapi.staticfiles import StaticFiles
 
 from relayforge.public_demo import app
 
-app.mount("/", StaticFiles(directory=Path(__file__).parent / "public", html=True, check_dir=False))
+public = Path(__file__).parent / "public"
+if public.is_dir():
+    app.mount("/", StaticFiles(directory=public, html=True))
 
 __all__ = ["app"]
