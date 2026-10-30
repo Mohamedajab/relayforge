@@ -137,9 +137,8 @@ This stops containers but leaves the named PostgreSQL volume intact.
 - The signing secret is returned at endpoint creation and stored in
   plaintext in the application DB. Production use needs KMS-backed
   encryption, rotation and access controls.
-- URL checks are repeated, and redirects are disabled, but DNS
-  rebinding between validation and actual HTTP connection remains
-  possible without transport-level address pinning.
+- Each attempt connects to a checked IP with the original TLS hostname.
+  Redirects and environment proxies are disabled; connections are not reused.
 - SQLite is suitable for local checks; PostgreSQL is the intended
   concurrent-worker store.
 - No code here proves end-to-end exactly-once delivery, full network

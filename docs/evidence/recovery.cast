@@ -1,0 +1,7 @@
+{"version": 2, "width": 100, "height": 14, "title": "RelayForge local recovery demonstration"}
+[0.156, "o", "A worker claimed the delivery and stopped before sending it.\r\n"]
+[0.156, "o", "Replacement cannot claim the delivery while its lease is live.\r\n"]
+[1.281, "o", "Attempt 1: HTTP 503, state=retrying\r\n"]
+[2.375, "o", "Attempt 2: HTTP 503, state=retrying\r\n"]
+[3.485, "o", "Attempt 3: HTTP 202, state=succeeded\r\n"]
+[3.516, "o", "Receiver recorded one delivery. Producer replay created no second delivery.\r\n"]

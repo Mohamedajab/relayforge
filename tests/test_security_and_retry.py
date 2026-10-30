@@ -70,3 +70,18 @@ def test_target_validator_rejects_ssrf_and_unsafe_schemes() -> None:
 def test_target_validator_accepts_public_https() -> None:
     validator = TargetValidator(resolver=lambda _host, _port: ["93.184.216.34"])
     validator.validate("https://example.com/hooks")
+
+
+@pytest.mark.parametrize(
+    "addresses", [["93.184.216.34", "127.0.0.1"], ["::1"], ["::ffff:127.0.0.1"]]
+)
+def test_target_validator_rejects_every_unsafe_answer(addresses: list[str]) -> None:
+    with pytest.raises(UnsafeTargetError):
+        TargetValidator(resolver=lambda _host, _port: addresses).validate("https://example.com")
+
+
+def test_target_validator_returns_checked_ipv6_and_rejects_bad_ports() -> None:
+    validator = TargetValidator(resolver=lambda _host, _port: ["2606:4700:4700::1111"])
+    assert validator.validate("https://example.com") == ["2606:4700:4700::1111"]
+    with pytest.raises(UnsafeTargetError, match="port"):
+        validator.validate("https://example.com:99999")

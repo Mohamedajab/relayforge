@@ -85,6 +85,9 @@ class DeliveryWorker:
         client = self.client or httpx.AsyncClient(
             timeout=self.settings.request_timeout_seconds,
             follow_redirects=False,
+            trust_env=False,
+            # Different hostnames may share an IP; never reuse their TLS connections.
+            limits=httpx.Limits(max_keepalive_connections=0),
         )
 
         async def bounded(delivery_id: str) -> None:
@@ -134,8 +137,20 @@ class DeliveryWorker:
 
         outcome: DeliveryOutcome
         try:
-            self.target_validator.validate(job.endpoint_url)
-            response = await client.post(job.endpoint_url, content=body, headers=headers)
+            addresses = await asyncio.wait_for(
+                asyncio.to_thread(self.target_validator.validate, job.endpoint_url),
+                timeout=self.settings.request_timeout_seconds,
+            )
+            original = httpx.URL(job.endpoint_url)
+            headers["Host"] = original.netloc.decode("ascii")
+            # Connect to the checked IP while TLS still verifies the original hostname.
+            response = await client.post(
+                original.copy_with(host=addresses[0]),
+                content=body,
+                headers=headers,
+                extensions={"sni_hostname": original.host},
+                follow_redirects=False,
+            )
             response_body = response.text[: self.settings.response_body_limit]
             outcome = DeliveryOutcome(
                 status_code=response.status_code,
@@ -150,6 +165,13 @@ class DeliveryWorker:
                 error=f"unsafe target: {exc}",
                 response_body=None,
                 retryable=False,
+            )
+        except TimeoutError:
+            outcome = DeliveryOutcome(
+                status_code=None,
+                error="DNS resolution timed out",
+                response_body=None,
+                retryable=True,
             )
         except httpx.TransportError as exc:
             outcome = DeliveryOutcome(

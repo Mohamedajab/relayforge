@@ -3,7 +3,7 @@
 [![CI](https://github.com/Mohamedajab/relayforge/actions/workflows/ci.yml/badge.svg)](https://github.com/Mohamedajab/relayforge/actions/workflows/ci.yml)
 
 RelayForge is a durable webhook delivery service built to make failure visible and recoverable.
-SaaS teams use it when a customer system must receive an event even if that system is temporarily
+It demonstrates how a service can deliver an event when a receiver is temporarily
 slow or unavailable. Producers publish once; RelayForge stores the work, signs each request,
 retries transient failures and keeps exhausted deliveries available for inspection and replay.
 
@@ -22,6 +22,7 @@ multiple workers share the queue and recover abandoned work after a process cras
 | Is the PostgreSQL path exercised? | GitHub Actions applies Alembic migrations and runs the concurrency test against PostgreSQL 17 on Python 3.11 and 3.12 |
 
 For a focused review, follow the [five-minute evaluation guide](docs/evaluation-guide.md).
+[Recovery recording](docs/evidence/recovery.cast) · [Verification and CV notes](docs/verification.md)
 For diagnosing failed deliveries and worker recovery, use the [local incident runbook](docs/INCIDENT_RUNBOOK.md).
 
 ## What it demonstrates
@@ -186,8 +187,10 @@ retry-to-success, dead-letter behaviour, receiver deduplication and competing Po
   network I/O.
 - Endpoint secrets are stored in the application database for this version. A production deployment
   should envelope-encrypt them with a cloud KMS and support rotation.
-- DNS addresses are checked before each delivery and redirects are disabled. A hardened deployment
-  should also pin the validated address at connection time to close DNS-rebinding races.
+- Each delivery resolves its target off the event loop and connects to a checked IP. HTTPS still
+  verifies the original hostname. Redirects and environment proxies are disabled. Connections are
+  not reused: different hostnames may share an IP. Only the first validated address is tried per
+  attempt; normal retries resolve again. DNS timeout stops waiting, not the underlying OS lookup.
 - Metrics are derived from persisted state, so they survive process restarts. High-volume deployments
   should export counters and histograms to a dedicated telemetry backend.
 
