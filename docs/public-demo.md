@@ -1,5 +1,7 @@
 # Public recovery demo
 
+**[Open RelayForge](https://relayforge-demo.vercel.app)** — no signup.
+
 The public page runs the existing Python service, delivery worker and signed example receiver.
 It does not expose the production API or accept destinations, payloads or credentials.
 
@@ -27,9 +29,18 @@ ruff format --check .
 mypy src
 ```
 
-Vercel imports this repository's `codex/cv-readiness` branch with the FastAPI preset,
-root directory `.`, and Python 3.12 from `.python-version`. No environment secrets or
-database service are needed. `app.py` exposes only the sample runner and static page;
+Vercel uses the FastAPI preset, root directory `.`, and Python 3.12 from `.python-version`.
+The initial production deployment used commit `891022a` from `codex/cv-readiness`:
+
+```sh
+npx vercel login
+npx vercel link --project relayforge-demo --scope mohamedajab
+npx vercel deploy --prod --scope mohamedajab
+```
+
+The project is connected to this repository; Vercel's normal production branch is `main`.
+Until the PR is merged, deploy the reviewed feature branch explicitly with the CLI.
+No environment secrets or database service are needed. `app.py` exposes only the sample runner and static page;
 `vercel.json` sets a 30-second function maximum and browser security headers.
 
 The runner has a 15-second deadline and permits one active run per Python process, with
@@ -43,3 +54,12 @@ The demo uses existing free hosting allowances; availability depends on those al
 integration test skipped because no local database engine was available; coverage 90.56%.
 The actual recovery command completed with 503, 503, 202 and one receiver record.
 Ruff and mypy passed. CI runs the database test against PostgreSQL 17 on Python 3.11/3.12.
+
+[CI run 41139723690](https://github.com/Mohamedajab/relayforge/actions/runs/41139723690)
+passed all 53 tests with no skips on both Python versions; Python 3.12 coverage was 90.67%.
+It also passed migrations, Ruff, mypy and the CLI recovery recording.
+
+Public deployment `dpl_5bejyk2hSq87GodFzEpqRLEmquov` returned HTTP 200 without authentication
+for `/`, `/healthz`, `/demo.js` and `/demo.css`. An unauthenticated POST to `/api/run` and
+the live browser button both completed the 503/503/202 sequence and verified one receiver
+record and one delivery. Security headers were checked on the public responses.

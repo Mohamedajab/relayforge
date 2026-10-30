@@ -2,6 +2,12 @@
 
 [![CI](https://github.com/Mohamedajab/relayforge/actions/workflows/ci.yml/badge.svg)](https://github.com/Mohamedajab/relayforge/actions/workflows/ci.yml)
 
+**[Run the live recovery demo](https://relayforge-demo.vercel.app)** · [Method and hosting limits](docs/public-demo.md)
+
+The public demo runs the actual Python worker against a fixed sample receiver in a temporary
+SQLite database: two failed attempts, successful recovery and one receiver record after replay.
+It resets after each run; the PostgreSQL queue and full API run locally or in CI.
+
 RelayForge is a durable webhook delivery service built to make failure visible and recoverable.
 It demonstrates how a service can deliver an event when a receiver is temporarily
 slow or unavailable. Producers publish once; RelayForge stores the work, signs each request,
