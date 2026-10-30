@@ -50,6 +50,11 @@ The demo uses existing free hosting allowances; availability depends on those al
 
 ## Verification
 
+Frontend revision, 30 October 2026: replaced the landing-page treatment with a scenario
+and delivery-log workspace; see [design choices](design.md). IBM Plex Sans is served locally
+under the included OFL licence. The recovery runner and API are unchanged. Ruff checks passed;
+the revised local browser controls completed the real recovery sequence.
+
 30 October 2026, Windows, Python 3.12.10: `pytest` passed 52 tests, with one PostgreSQL
 integration test skipped because no local database engine was available; coverage 90.56%.
 The actual recovery command completed with 503, 503, 202 and one receiver record.
