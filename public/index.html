@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Run RelayForge's Python worker against a failing sample receiver and inspect recovery, retries and deduplication.">
+  <meta name="theme-color" content="#14202b"><title>RelayForge · Delivery recovery</title>
+  <link rel="stylesheet" href="/demo.css"><script src="/demo.js" defer></script>
+</head>
+<body>
+<header><a class="brand" href="/">RelayForge<span> / live demo</span></a><a href="https://github.com/Mohamedajab/relayforge">View source ↗</a></header>
+<main>
+  <section class="intro"><p class="eyebrow">WEBHOOK DELIVERY / FAILURE &amp; RECOVERY</p>
+    <h1>A failed receiver.<br>A finished delivery.</h1>
+    <p class="lead">A worker leaves a job unfinished. Its replacement waits for the lease, retries two failed requests, then delivers the event once.</p>
+    <div class="controls"><button id="run" type="button">Run recovery demo <span aria-hidden="true">→</span></button><p id="status" role="status" aria-live="polite">Ready. A run usually takes a few seconds.</p></div>
+  </section>
+  <section class="workspace" aria-label="Recovery results">
+    <div class="metrics"><div><span>Delivery attempts</span><strong id="attempts">—</strong></div><div><span>Receiver records</span><strong id="received">—</strong></div><div><span>Delivery state</span><strong id="state">Ready</strong></div></div>
+    <div class="timeline-head"><h2>Delivery timeline</h2><span>Measured by the Python runner</span></div>
+    <ol id="timeline"><li class="placeholder">Run the demo to see the worker's actual results.</li></ol>
+    <p id="error" role="alert" hidden></p>
+  </section>
+  <section class="details" aria-label="How this demonstration works">
+    <article><span class="number">01</span><h2>The actual Python code</h2><p>This runs the repository's service, worker, signature checks and example receiver. The receiver runs in process; there are no outbound webhook calls.</p></article>
+    <article><span class="number">02</span><h2>One isolated sample</h2><p>Every run uses a temporary SQLite database, one event and three delivery attempts. Data is removed when the run ends. This is not a persistent hosted queue.</p></article>
+    <article><span class="number">03</span><h2>A result you can inspect</h2><p>Successful recovery must leave one receiver record and one delivery, even after replaying the producer event. Failed checks are shown as errors.</p></article>
+  </section>
+</main>
+<footer><span>Built by Mohamed A. Ali</span><a href="https://github.com/Mohamedajab/relayforge/blob/codex/cv-readiness/docs/public-demo.md">Method, limits &amp; setup ↗</a></footer>
+</body></html>
