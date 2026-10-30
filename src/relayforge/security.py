@@ -71,7 +71,7 @@ class TargetValidator:
         self.allow_insecure_http = allow_insecure_http
         self.resolver = resolver
 
-    def validate(self, url: str) -> None:
+    def validate(self, url: str) -> list[str]:
         parsed = urlsplit(url)
         if parsed.scheme not in {"http", "https"}:
             raise UnsafeTargetError("target must use http or https")
@@ -84,7 +84,10 @@ class TargetValidator:
         if parsed.fragment:
             raise UnsafeTargetError("target URLs must not contain fragments")
 
-        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        try:
+            port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        except ValueError as exc:
+            raise UnsafeTargetError("target port is invalid") from exc
         try:
             addresses = self.resolver(parsed.hostname, port)
         except (OSError, socket.gaierror) as exc:
@@ -95,3 +98,4 @@ class TargetValidator:
             raise UnsafeTargetError(
                 "private, loopback, link-local and reserved targets are disabled"
             )
+        return addresses

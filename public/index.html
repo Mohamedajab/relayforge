@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Inspect RelayForge's Python worker recovering an abandoned delivery and retrying a failing sample receiver.">
+  <meta name="theme-color" content="#edf2f7">
+  <title>RelayForge — Delivery recovery</title>
+  <link rel="preload" href="/fonts/ibm-plex-sans.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/demo.css">
+  <script src="/demo.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to demo</a>
+<header class="site-header">
+  <a class="brand" href="/" translate="no"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 8h16v16H8zM3 8h5m16 16h5M8 8l16 16"/><circle cx="8" cy="8" r="4"/><circle cx="24" cy="24" r="4"/></svg>RelayForge</a>
+  <span class="header-context">Webhook delivery</span>
+  <a href="https://github.com/Mohamedajab/relayforge">Source code</a>
+</header>
+<main id="main">
+  <div class="page-heading"><div><h1>Delivery recovery</h1><p>Follow one event through an abandoned lease, receiver failures and a successful retry.</p></div><span class="demo-label">Public demonstration</span></div>
+  <div class="workbench">
+    <section class="scenario" aria-labelledby="scenario-title">
+      <h2 id="scenario-title">The sample run</h2>
+      <p>One event. One receiver. Three allowed attempts.</p>
+      <button id="run" type="button">Run recovery demo</button>
+      <p id="status" role="status" aria-live="polite">Ready. Takes about four seconds.</p>
+      <ol class="conditions">
+        <li><strong>Abandoned job</strong><span>Worker A claims the event, then leaves it unfinished.</span></li>
+        <li><strong>Lease expires</strong><span>Worker B waits for the one-second lease before taking over.</span></li>
+        <li><strong>Receiver recovers</strong><span>The receiver fails twice with HTTP 503, then accepts the event.</span></li>
+      </ol>
+      <p class="scope-note">Uses the actual Python service and worker with a fixed, in-process receiver.</p>
+    </section>
+    <section class="results" aria-labelledby="results-title">
+      <header class="results-heading"><h2 id="results-title">Delivery log</h2><span>Live observations</span></header>
+      <dl class="metrics"><div><dt>Delivery attempts</dt><dd id="attempts">—</dd></div><div><dt>Receiver records</dt><dd id="received">—</dd></div><div><dt>Delivery state</dt><dd id="state">Ready</dd></div></dl>
+      <div class="log-heading" aria-hidden="true"><span>Elapsed</span><span>Observation</span></div>
+      <ol id="timeline" aria-label="Delivery observations"><li class="placeholder"><strong>No run yet</strong><span>Start the sample to inspect lease recovery, retries and the final duplicate check.</span></li></ol>
+      <p id="error" role="alert" hidden></p>
+      <p class="log-note">Times are measured by the Python runner. Results appear only when each step completes.</p>
+    </section>
+  </div>
+  <section class="method" aria-labelledby="method-title"><h2 id="method-title">What this verifies</h2><div><p>A completed run must leave one receiver record and one delivery after the producer submits the same event again. A failed assertion is shown as an error.</p><p>Each run gets a temporary SQLite database that is removed afterwards. This demo makes no outbound webhook calls and does not host a persistent queue. PostgreSQL concurrency and HTTPS delivery have separate tests in the repository.</p></div></section>
+</main>
+<footer class="site-footer"><span>Mohamed A. Ali</span><a href="https://github.com/Mohamedajab/relayforge/blob/dev/cv-readiness/docs/public-demo.md">Method and setup</a></footer>
+</body>
+</html>

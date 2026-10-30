@@ -45,3 +45,5 @@ jobs:
       - run: pytest
         env:
           RELAYFORGE_TEST_POSTGRES_URL: postgresql+psycopg://relayforge:relayforge@localhost:5432/relayforge
+
+      - run: python scripts/recovery_demo.py --recording /tmp/recovery.cast

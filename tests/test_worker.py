@@ -135,3 +135,120 @@ async def test_stale_worker_cannot_finalize_reclaimed_delivery(
         assert await worker.process(delivery_id, client) is False
     finally:
         await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_worker_pins_each_attempt_and_never_follows_redirects(
+    service, make_endpoint, factory, settings, validator
+):
+    make_endpoint(url="https://receiver.test:8443/callback")
+    service.publish_event(order_event("pin"))
+    answers = iter([["2606:4700:4700::1111"], ["127.0.0.1"]])
+    checked = TargetValidator(resolver=lambda _host, _port: next(answers))
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(302, headers={"Location": "http://127.0.0.1/private"})
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), follow_redirects=True
+    ) as client:
+        worker = DeliveryWorker(
+            factory, settings, owner="pinned", client=client, target_validator=checked
+        )
+        assert await worker.run_once() == 1
+        assert len(requests) == 1
+        assert requests[0].url.host == "2606:4700:4700::1111"
+        assert requests[0].headers["Host"] == "receiver.test:8443"
+        assert requests[0].extensions["sni_hostname"] == "receiver.test"
+        assert service.list_deliveries()[0].state == DeliveryState.DEAD
+        service.publish_event(order_event("rebound"))
+        assert await worker.run_once() == 1
+        assert len(requests) == 1
+        assert "unsafe target" in service.list_deliveries()[0].last_error
+
+
+@pytest.mark.asyncio
+async def test_worker_resolves_off_the_event_loop(service, make_endpoint, factory, settings):
+    import threading
+
+    make_endpoint()
+    service.publish_event(order_event("thread"))
+    loop_thread = threading.get_ident()
+
+    def resolver(_host, _port):
+        assert threading.get_ident() != loop_thread
+        return ["127.0.0.1"]
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda r: httpx.Response(204))
+    ) as client:
+        worker = DeliveryWorker(
+            factory,
+            settings,
+            client=client,
+            target_validator=TargetValidator(
+                allow_private=True, allow_insecure_http=True, resolver=resolver
+            ),
+        )
+        assert await worker.run_once() == 1
+
+
+@pytest.mark.asyncio
+async def test_pinned_https_checks_hostname_and_ignores_proxy(
+    service, make_endpoint, factory, settings, monkeypatch
+):
+    import ssl
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from pathlib import Path
+    from threading import Thread
+
+    hosts = []
+    names = []
+
+    class Receiver(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            hosts.append(self.headers["Host"])
+            self.send_response(204)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+
+    fixtures = Path(__file__).parent / "fixtures"
+    tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    tls.load_cert_chain(fixtures / "receiver.pem", fixtures / "receiver.key")
+    tls.set_servername_callback(lambda sock, name, ctx: names.append(name))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Receiver)
+    server.socket = tls.wrap_socket(server.socket, server_side=True)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    monkeypatch.setenv("SSL_CERT_FILE", str(fixtures / "receiver.pem"))
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:1")
+    monkeypatch.setenv("NO_PROXY", "")
+    # trust_env=False also ignores SSL_CERT_FILE: provide the test CA explicitly.
+    original_client = httpx.AsyncClient
+    ca = ssl.create_default_context(cafile=str(fixtures / "receiver.pem"))
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: original_client(verify=ca, **kwargs))
+    validator = TargetValidator(allow_private=True, resolver=lambda host, port: ["127.0.0.1"])
+    port = server.server_port
+    try:
+        make_endpoint(url=f"https://receiver.test:{port}/webhooks", name="valid")
+        make_endpoint(url=f"https://wrong.test:{port}/webhooks", name="wrong")
+        service.publish_event(order_event("tls"))
+        worker = DeliveryWorker(factory, settings, target_validator=validator)
+        assert await worker.run_once(concurrency=1) == 2
+        deliveries = service.list_deliveries()
+        assert sorted(d.state.value for d in deliveries) == ["retrying", "succeeded"]
+        assert hosts == [f"receiver.test:{port}"]
+        assert "receiver.test" in names
+        assert "wrong.test" in names
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)

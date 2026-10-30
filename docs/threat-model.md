@@ -33,13 +33,6 @@ and the database are trusted for this version.
 
 ## Residual risks
 
-### DNS rebinding
-
-RelayForge validates every DNS answer before delivery, but HTTPX performs its own resolution when
-connecting. An attacker who changes the answer between those steps may bypass the address check.
-A hardened version should use a transport that connects to the validated address while retaining
-the original TLS server name.
-
 ### Secret storage
 
 Endpoint secrets are currently plaintext database fields. Production use requires envelope
@@ -71,3 +64,11 @@ classification and encryption.
 5. Deduplicate the stable delivery ID before applying side effects.
 6. Return 2xx only after the durable consumer transaction commits.
 
+
+## Pinned delivery connections
+
+The worker connects to a validated IP and keeps the original Host header and TLS server name.
+It rejects a DNS result set containing any forbidden address, disables redirects and environment
+proxies, and opens a fresh connection per request to avoid cross-host TLS reuse. Resolution runs
+in a thread with a bounded wait; an OS lookup can finish after that wait expires. The first checked
+address is used; this implementation has no within-attempt address failover.

@@ -17,14 +17,20 @@ Wait until the API reports ready:
 
 ## Register the receiver
 
-    curl -X POST http://localhost:8000/v1/endpoints +      -H "Content-Type: application/json" +      -H "X-API-Key: local-development-key" +      -d '{"name":"demo-orders","url":"http://receiver:9000/webhooks/flaky","event_types":["order.created"],"secret":"local-receiver-secret"}'
+    curl -X POST http://localhost:8000/v1/endpoints \
+      -H "Content-Type: application/json" \
+      -H "X-API-Key: local-development-key" \
+      -d '{"name":"demo-orders","url":"http://receiver:9000/webhooks/flaky","event_types":["order.created"],"secret":"local-receiver-secret"}'
 
 RelayForge accepts private HTTP targets only because the demo overlay explicitly enables them.
 The default configuration requires public HTTPS destinations.
 
 ## Publish an order event
 
-    curl -X POST http://localhost:8000/v1/events +      -H "Content-Type: application/json" +      -H "X-API-Key: local-development-key" +      -d '{"source":"checkout","event_type":"order.created","idempotency_key":"demo-order-42","payload":{"order_id":"ord-42","total_minor":1299,"currency":"GBP"}}'
+    curl -X POST http://localhost:8000/v1/events \
+      -H "Content-Type: application/json" \
+      -H "X-API-Key: local-development-key" \
+      -d '{"source":"checkout","event_type":"order.created","idempotency_key":"demo-order-42","payload":{"order_id":"ord-42","total_minor":1299,"currency":"GBP"}}'
 
 The API returns HTTP 202 immediately. The subscriber's availability does not extend the producer
 request.
@@ -33,7 +39,8 @@ request.
 
 Query the delivery state and attempt history:
 
-    curl "http://localhost:8000/v1/deliveries?state=succeeded" +      -H "X-API-Key: local-development-key"
+    curl "http://localhost:8000/v1/deliveries?state=succeeded" \
+      -H "X-API-Key: local-development-key"
 
 Inspect what the receiver processed:
 
@@ -60,3 +67,19 @@ and the API returns HTTP 409 because the request is ambiguous.
 - docs/threat-model.md records controls and unresolved production risks instead of claiming they do
   not exist.
 
+
+## Repeatable local recovery recording
+
+After installing `.[dev]`, run:
+
+```sh
+python scripts/recovery_demo.py
+```
+
+This self-check uses a temporary SQLite database and the existing signature-verifying
+ASGI receiver in process. It claims a job as an abandoned worker, waits for the real lease
+to expire, observes two 503s followed by success, and checks receiver and producer deduplication.
+It does not kill an OS process or establish PostgreSQL concurrency or network performance.
+The command saves an asciinema v2 terminal recording at `docs/evidence/recovery.cast`;
+play it with `asciinema play docs/evidence/recovery.cast`. No asciinema dependency is required to run it.
+The PostgreSQL CI test separately checks competing worker claims.
