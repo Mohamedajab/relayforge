@@ -39,7 +39,7 @@ npx vercel deploy --prod --scope mohamedajab
 ```
 
 The project is connected to this repository; Vercel's normal production branch is `main`.
-Until the PR is merged, deploy the reviewed feature branch explicitly with the CLI.
+The recovery demo and delivery improvements are merged into `main`; deploy that branch.
 No environment secrets or database service are needed. `app.py` exposes only the sample runner and static page;
 `vercel.json` sets a 30-second function maximum and browser security headers.
 
